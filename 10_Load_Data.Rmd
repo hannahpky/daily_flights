@@ -3,18 +3,144 @@ title: "10_Load_Data"
 output: html_notebook
 ---
 
+Define naming conventions such as "10_IMPORT_DATAPROJECT", "20_EXPLORATORYANALYSIS", "30_MODELING"
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+# What affects the number of daily flights?
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+## First, load in important libraries
 
 ```{r}
-plot(cars)
+library(tidyverse)
+library(janitor)
+library(lubridate)
+library(modelr)
+
+
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+## Load in flights and related data
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+```{r}
+library(readr)
+flights <-
+  read_csv(
+    "data/flights.csv",
+    col_types = cols(
+      air_time = col_integer(),
+      arr_delay = col_integer(),
+      arr_time = col_integer(),
+      day = col_integer(),
+      dep_delay = col_integer(),
+      dep_time = col_integer(),
+      distance = col_integer(),
+      flight = col_character(),
+      hour = col_integer(),
+      minute = col_integer(),
+      month = col_integer(),
+      sched_arr_time = col_integer(),
+      sched_dep_time = col_integer(),
+      year = col_integer()
+    )
+  )
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+
+```
+
+
+# What is the flight volume by day?
+
+There is no well-formatted date-time field for the departures. Create new column in the analysis, which mutates the current encoding.
+
+```{r}
+daily <- flights %>%
+  mutate(date = make_date(year, month, day)) %>%
+  group_by(date) %>%
+  summarise(n = n() ) %>%
+  arrange(desc(n))
+
+daily
+```
+
+Busiest day was the day before Thanksgiving.
+
+```{r}
+daily <- flights %>%
+  mutate(date = make_date(year, month, day)) %>%
+  group_by(date) %>%
+  summarise(n = n() ) %>%
+  arrange((n))
+
+daily
+```
+
+Least travelled day was Thanksgiving Day. 
+
+Let's graph the time series of number of flights
+
+```{r}
+colnames(flights)
+time_seris_flight_num <- ggplot(daily)+
+  geom_line(aes(x= date, y= n))
+
+time_seris_flight_num
+  
+```
+
+Spikes, drops in volume might be day of week. 
+
+We need distribution of the flights by day of week. We need to indicate day of the week in the dataframe
+
+```{r}
+
+?lubridate
+
+daily <- daily %>%
+  mutate(wday = (wday(date, label = TRUE)))
+
+daily
+
+```
+
+
+Remove the effect of day of week. I will fit a linear regression model and graph the residuals.
+
+```{r}
+mod <- lm(n ~ wday, data = daily)
+
+daily <- daily %>%
+  add_residuals(mod)
+
+daily
+
+```
+
+Now plot the residuals
+
+```{r}
+
+residual_plt <- daily %>%
+  ggplot(mapping = aes(x = date, y= resid)) +
+  geom_line() +
+  geom_smooth()
+
+residual_plt
+
+```
+
+Might want to consider linear model taking month into consideration
+
+
+
+```{r}
+
+```
+
+
+
+
+
+
+
 
